@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
+import FileLog from "./components/FileLog";
 import "./App.css";
+import AppContainer from "./components/styled/AppContainer";
 
 function App() {
   const [msg, setMsg] = useState("");
@@ -22,11 +24,13 @@ function App() {
   }, []);
 
   return (
-    <div className="container">
-      <button onClick={subscribe}>Subscribe</button>
-
-      <p>{msg}</p>
-    </div>
+    <AppContainer>
+      <FileLog />
+      <FileLog />
+      <FileLog />
+      <FileLog />
+      <FileLog />
+    </AppContainer>
   );
 }
 
