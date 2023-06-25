@@ -3,72 +3,83 @@
 use tauri::{State, Window};
 extern crate notify;
 
+mod file_helpers;
+use file_helpers::get_last_change;
+
 use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
-use std::collections::{HashMap, LinkedList};
-use std::fs::{self, File};
-use std::io::{Read, Seek, SeekFrom};
-use std::sync::mpsc::channel;
-use std::sync::{Arc, Mutex};
-use std::thread::{spawn, JoinHandle};
-use std::time::Duration;
+use std::sync::{mpsc::channel, Arc, Mutex};
+use std::{
+    collections::{HashMap, LinkedList},
+    time::Duration,
+};
+
+use humthreads::{registered_threads, Builder, Thread, ThreadScope};
 
 struct AppState {
-    trheads: HashMap<String, JoinHandle<()>>,
+    threads: HashMap<String, Thread<()>>,
     files: LinkedList<String>,
+}
+
+fn watch_file(window: Window, path: &str, scope: ThreadScope) {
+    println!("Watching {}", path);
+    let (tx, rx) = channel();
+    let mut watcher = watcher(tx.clone(), Duration::from_secs(1)).unwrap();
+    watcher.watch(&path, RecursiveMode::NonRecursive).unwrap();
+
+    while !scope.should_shutdown() {
+        match rx.recv() {
+            Ok(DebouncedEvent::Write(_)) => {
+                let paylaod = get_last_change(&path).unwrap();
+                window.emit("log-updated", paylaod).unwrap();
+            }
+            Ok(_) => {}
+            Err(err) => {
+                window.emit("error-occurred", "").unwrap();
+                eprintln!("Error: {:?}", err);
+            }
+        }
+    }
 }
 
 #[tauri::command]
 fn subscribe(window: Window, thread_name: String, app_state: State<Arc<Mutex<AppState>>>) {
     let path = r"C:\Users\Julian\Desktop\test.txt";
 
-    let handler = spawn(move || {
-        println!("Watching {}", path);
-        let (tx, rx) = channel();
-        let mut watcher = watcher(tx, Duration::from_secs(1)).unwrap();
-        watcher.watch(&path, RecursiveMode::NonRecursive).unwrap();
+    let registered = registered_threads();
 
-        let mut contents = fs::read_to_string(&path).unwrap();
-        let mut pos = contents.len() as u64;
+    let is_registered = registered.iter().any(|x| x.name == thread_name.clone());
 
-        loop {
-            match rx.recv() {
-                Ok(DebouncedEvent::Write(_)) => {
-                    let mut f = File::open(&path).unwrap();
-                    f.seek(SeekFrom::Start(pos)).unwrap();
+    if is_registered {
+        return;
+    };
 
-                    pos = f.metadata().unwrap().len();
-
-                    contents.clear();
-                    f.read_to_string(&mut contents).unwrap();
-
-                    print!("{}", contents);
-                    window.emit("log-updated", contents.clone()).unwrap();
-                }
-                Ok(_) => {}
-                Err(err) => {
-                    window.emit("error-occurred", "").unwrap();
-                    eprintln!("Error: {:?}", err);
-                }
-            }
-        }
+    let handle = Builder::new(thread_name.clone()).spawn(move |scope| {
+        watch_file(window, &path, scope);
     });
 
     app_state
         .lock()
         .unwrap()
-        .trheads
-        .insert(thread_name, handler);
-
+        .threads
+        .insert(thread_name.clone(), handle.unwrap());
     app_state.lock().unwrap().files.push_back(path.to_string());
+}
+
+#[tauri::command]
+fn unsubscribe(thread_name: String, app_state: State<Arc<Mutex<AppState>>>) {
+    let to_remove = app_state.lock().unwrap().threads.remove(&thread_name);
+    if let Some(thread) = to_remove {
+        thread.request_shutdown();
+    }
 }
 
 fn main() {
     tauri::Builder::default()
         .manage(Arc::new(Mutex::new(AppState {
-            trheads: HashMap::new(),
             files: LinkedList::new(),
+            threads: HashMap::new(),
         })))
-        .invoke_handler(tauri::generate_handler![subscribe])
+        .invoke_handler(tauri::generate_handler![subscribe, unsubscribe])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
