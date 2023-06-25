@@ -18,7 +18,7 @@ struct AppState {
 }
 
 #[tauri::command]
-fn subscribe(window: Window, thread_name: String, thread_holder: State<Arc<Mutex<AppState>>>) {
+fn subscribe(window: Window, thread_name: String, app_state: State<Arc<Mutex<AppState>>>) {
     let path = r"C:\Users\Julian\Desktop\test.txt";
 
     let handler = spawn(move || {
@@ -53,11 +53,13 @@ fn subscribe(window: Window, thread_name: String, thread_holder: State<Arc<Mutex
         }
     });
 
-    thread_holder
+    app_state
         .lock()
         .unwrap()
         .trheads
         .insert(thread_name, handler);
+
+    app_state.lock().unwrap().files.push_back(path.to_string());
 }
 
 fn main() {
