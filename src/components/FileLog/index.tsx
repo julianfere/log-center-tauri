@@ -1,14 +1,27 @@
 import { useState, useEffect } from "react";
 import LogContainer from "../styled/LogContainer";
-import LogArea from "./styled/LogArea";
+import LogArea, { CloseIcon, LogHeader, Title } from "./styled";
 import { subscribeToLogUpdates } from "../../utils/subscribe";
 import { invoke } from "@tauri-apps/api";
 import getNameFromPath from "../../utils/names";
-import Title from "./styled/title";
-import { File } from "../../context/AppContext";
+import { File, useAppContext } from "../../context/AppContext";
+
+import Remove from "../../assets/remove.svg";
 
 const FileLog = ({ file }: { file: File }) => {
+  const { setFiles } = useAppContext();
   const [log, setLog] = useState("");
+
+  const unsubscribe = (id: string, callback: Promise<() => void> | null) => {
+    invoke("unsubscribe", { threadName: id }).then(() => {
+      if (callback) callback.then((u) => u());
+    });
+  };
+
+  const handleRemove = () => {
+    unsubscribe(file.id, null);
+    setFiles((old) => old.filter((f) => f.id !== file.id));
+  };
 
   useEffect(() => {
     const unsub = subscribeToLogUpdates(file.id, (event) => {
@@ -16,14 +29,16 @@ const FileLog = ({ file }: { file: File }) => {
     });
 
     return () => {
-      invoke("unsubscribe", { threadName: file.id });
-      unsub.then((u) => u());
+      unsubscribe(file.id, unsub);
     };
   }, []);
 
   return (
     <LogContainer>
-      <Title>{getNameFromPath(file.path)}</Title>
+      <LogHeader>
+        <Title>{getNameFromPath(file.path)}</Title>
+        <CloseIcon src={Remove} onClick={handleRemove} />
+      </LogHeader>
       <LogArea readOnly value={log} />
     </LogContainer>
   );

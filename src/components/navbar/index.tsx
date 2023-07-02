@@ -13,7 +13,6 @@ const Navbar = ({ handler }: { handler: () => void }) => {
     if (!isWatching) {
       await invoke("subscribe", { files });
     } else {
-      console.log("stop watching");
       Promise.allSettled(
         files.map((file) => invoke("unsubscribe", { threadName: file.id }))
       );
