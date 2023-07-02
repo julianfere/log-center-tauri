@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use serde::Deserialize;
 use tauri::{State, Window};
 extern crate notify;
 
@@ -20,19 +21,34 @@ struct AppState {
     files: LinkedList<String>,
 }
 
-fn watch_file(window: Window, path: &str, scope: ThreadScope) {
-    println!("Watching {}", path);
+#[derive(Deserialize, Clone)]
+struct FilePayload {
+    path: String,
+    id: String,
+}
+
+fn watch_file(window: Window, path: &str, id: &str, scope: ThreadScope) {
     let (tx, rx) = channel();
     let mut watcher = watcher(tx.clone(), Duration::from_secs(1)).unwrap();
-    watcher.watch(&path, RecursiveMode::NonRecursive).unwrap();
+    watcher.watch(path, RecursiveMode::NonRecursive).unwrap();
 
     while !scope.should_shutdown() {
-        match rx.recv() {
+        match rx.try_recv() {
             Ok(DebouncedEvent::Write(_)) => {
                 let paylaod = get_last_change(&path).unwrap();
-                window.emit("log-updated", paylaod).unwrap();
+                let formated_string = format!("log-updated:{}", id);
+
+                match window.emit(&formated_string, &paylaod) {
+                    Ok(_) => {
+                        println!("Emitted: {} with: {}", formated_string, paylaod);
+                    }
+                    Err(err) => {
+                        eprintln!("Error: {:?}", err);
+                    }
+                }
             }
             Ok(_) => {}
+            Err(std::sync::mpsc::TryRecvError::Empty) => {}
             Err(err) => {
                 window.emit("error-occurred", "").unwrap();
                 eprintln!("Error: {:?}", err);
@@ -42,27 +58,30 @@ fn watch_file(window: Window, path: &str, scope: ThreadScope) {
 }
 
 #[tauri::command]
-fn subscribe(window: Window, thread_name: String, app_state: State<Arc<Mutex<AppState>>>) {
-    let path = r"C:\Users\Julian\Desktop\test.txt";
+fn subscribe(window: Window, paths: Vec<FilePayload>, app_state: State<Arc<Mutex<AppState>>>) {
+    for path in paths {
+        let cloned_window = window.clone();
+        let registered = registered_threads();
+        let cloned_path = path.path.clone();
+        let cloned_id = path.id.clone();
 
-    let registered = registered_threads();
+        let is_registered = registered.iter().any(|x| x.name == path.id.clone());
 
-    let is_registered = registered.iter().any(|x| x.name == thread_name.clone());
+        if is_registered {
+            return;
+        };
 
-    if is_registered {
-        return;
-    };
+        let handle = Builder::new(path.id.clone()).spawn(move |scope| {
+            watch_file(cloned_window, &path.path, &path.id, scope);
+        });
 
-    let handle = Builder::new(thread_name.clone()).spawn(move |scope| {
-        watch_file(window, &path, scope);
-    });
-
-    app_state
-        .lock()
-        .unwrap()
-        .threads
-        .insert(thread_name.clone(), handle.unwrap());
-    app_state.lock().unwrap().files.push_back(path.to_string());
+        app_state
+            .lock()
+            .unwrap()
+            .threads
+            .insert(cloned_id, handle.unwrap());
+        app_state.lock().unwrap().files.push_back(cloned_path);
+    }
 }
 
 #[tauri::command]
