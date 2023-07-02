@@ -1,8 +1,8 @@
 import styled from "styled-components";
 
 const LogContainer = styled.section`
-  display: flex;
-  height: 100%;
+  flex: 1 0 40%;
+  height: 70%;
   flex-direction: column;
   align-items: center;
   border: 1px solid #18500b;
