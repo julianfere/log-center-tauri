@@ -2,7 +2,7 @@ import styled from "styled-components";
 
 const NavContainer = styled.div`
   display: flex;
-  justify-content: space-between;
+  justify-content: space-evenly;
   align-items: center;
   padding: 0.4rem;
   background-color: #000000;
@@ -42,5 +42,12 @@ const LogsContainer = styled.div`
   padding: 0.4rem;
 `;
 
+const ButtonContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+`;
+
 export default NavContainer;
-export { NavButton, LogsContainer };
+export { NavButton, LogsContainer, ButtonContainer };

@@ -58,29 +58,33 @@ fn watch_file(window: Window, path: &str, id: &str, scope: ThreadScope) {
 }
 
 #[tauri::command]
-fn subscribe(window: Window, paths: Vec<FilePayload>, app_state: State<Arc<Mutex<AppState>>>) {
-    for path in paths {
+fn subscribe(window: Window, files: Vec<FilePayload>, app_state: State<Arc<Mutex<AppState>>>) {
+    for file in files {
+        // im sure that this could be better, but it works for now and i dont know how to do it better
         let cloned_window = window.clone();
         let registered = registered_threads();
-        let cloned_path = path.path.clone();
-        let cloned_id = path.id.clone();
+        let file_path = file.path.clone();
+        let cloned_id = file.id.clone();
+        let path_id = file.id.clone();
 
-        let is_registered = registered.iter().any(|x| x.name == path.id.clone());
+        let is_registered = registered.iter().any(|x| x.name == path_id);
 
         if is_registered {
             return;
         };
 
-        let handle = Builder::new(path.id.clone()).spawn(move |scope| {
-            watch_file(cloned_window, &path.path, &path.id, scope);
-        });
-
-        app_state
-            .lock()
-            .unwrap()
-            .threads
-            .insert(cloned_id, handle.unwrap());
-        app_state.lock().unwrap().files.push_back(cloned_path);
+        match Builder::new(path_id).spawn(move |scope| {
+            watch_file(cloned_window, &file_path, &cloned_id, scope);
+        }) {
+            Ok(trhead) => {
+                app_state.lock().unwrap().threads.insert(file.id, trhead);
+                app_state.lock().unwrap().files.push_back(file.path);
+            }
+            Err(err) => {
+                window.emit("error-occurred", "").unwrap();
+                eprintln!("Error: {:?}", err);
+            }
+        }
     }
 }
 

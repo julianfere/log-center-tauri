@@ -5,6 +5,7 @@ import { LogsContainer } from "./components/navbar/styled";
 import { open } from "@tauri-apps/api/dialog";
 import { useAppContext } from "./context/AppContext";
 import { v4 } from "uuid";
+import AppBar from "./components/AppBar";
 
 function App() {
   const { files, setFiles } = useAppContext();
@@ -35,6 +36,7 @@ function App() {
 
   return (
     <AppContainer>
+      <AppBar />
       <Navbar handler={handleAddFile} />
       <LogsContainer>{filesToRender}</LogsContainer>
     </AppContainer>
