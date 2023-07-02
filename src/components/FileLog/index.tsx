@@ -1,30 +1,29 @@
 import { useState, useEffect } from "react";
 import LogContainer from "../styled/LogContainer";
 import LogArea from "./styled/LogArea";
-import { v4 } from "uuid";
 import { subscribeToLogUpdates } from "../../utils/subscribe";
 import { invoke } from "@tauri-apps/api";
+import getNameFromPath from "../../utils/names";
+import Title from "./styled/title";
+import { File } from "../../context/AppContext";
 
-const FileLog = () => {
+const FileLog = ({ file }: { file: File }) => {
   const [log, setLog] = useState("");
 
   useEffect(() => {
-    const id = v4();
-
-    const unsub = subscribeToLogUpdates(id, (event) => {
-      console.log("updating", event.payload);
+    const unsub = subscribeToLogUpdates(file.id, (event) => {
       setLog((old) => old + event.payload + "\n");
     });
 
     return () => {
-      invoke("unsubscribe", { threadName: id });
+      invoke("unsubscribe", { threadName: file.id });
       unsub.then((u) => u());
     };
   }, []);
 
   return (
     <LogContainer>
-      <h1>FileLog</h1>
+      <Title>{getNameFromPath(file.path)}</Title>
       <LogArea readOnly value={log} />
     </LogContainer>
   );

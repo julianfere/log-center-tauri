@@ -9,19 +9,26 @@ const NavContainer = styled.div`
   border-bottom: 1px solid #18500b;
 `;
 
-const NavButton = styled.button`
+const NavButton = styled.button<{ watching?: boolean }>`
   padding: 0.4rem;
   background-color: #000000;
   border: none;
-  color: #ffffff;
+  color: ${(props) => (props.watching ? "#e73d31" : "#ffffff")};
   font-size: 1rem;
   font-weight: 100;
   cursor: pointer;
   border-bottom: 1px solid transparent;
   &:hover {
-    color: #50aa3c;
-    border-bottom: 1px solid #50aa3c;
+    color: ${(props) => (props.watching ? "#e73d31" : "#ffffff")};
+    border-bottom: 1px solid
+      ${(props) => (props.watching ? "#e73d31" : "#50aa3c")};
     transition: all 0.5s ease-in-out;
+  }
+
+  &:disabled {
+    color: #7e7e7e;
+    border-bottom: 1px solid transparent;
+    cursor: not-allowed;
   }
 `;
 
