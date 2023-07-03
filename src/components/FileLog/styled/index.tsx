@@ -5,7 +5,8 @@ const LogArea = styled.textarea`
   height: 100%;
   resize: none;
   border: none;
-  background-color: transparent;
+  background-color: #0a0a0a;
+  padding: 0.4rem;
   color: white;
   font-size: 1.2rem;
   outline: none;
