@@ -31,11 +31,15 @@ fn watch_file(window: Window, path: &str, id: &str, scope: ThreadScope) {
     let (tx, rx) = channel();
     let mut watcher = watcher(tx.clone(), Duration::from_secs(1)).unwrap();
     watcher.watch(path, RecursiveMode::NonRecursive).unwrap();
-
+    println!("Watching: {}", path);
     while !scope.should_shutdown() {
         match rx.try_recv() {
             Ok(DebouncedEvent::Write(_)) => {
-                let paylaod = get_last_change(&path).unwrap();
+                let paylaod = match get_last_change(&path) {
+                    Ok(paylaod) => paylaod,
+                    Err(err) => String::from(err.to_string()),
+                };
+
                 let formated_string = format!("log-updated:{}", id);
 
                 match window.emit(&formated_string, &paylaod) {
@@ -59,6 +63,7 @@ fn watch_file(window: Window, path: &str, id: &str, scope: ThreadScope) {
 
 #[tauri::command]
 fn subscribe(window: Window, files: Vec<FilePayload>, app_state: State<Arc<Mutex<AppState>>>) {
+    println!("Subscribe called");
     for file in files {
         // im sure that this could be better, but it works for now and i dont know how to do it better
         let cloned_window = window.clone();
