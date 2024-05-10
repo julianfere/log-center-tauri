@@ -32,7 +32,7 @@ const Navbar = ({ handler }: { handler: () => void }) => {
         ) : (
           <ButtonContainer>
             <img src={WatchIcon} alt="Watch" />
-            <p>Watch</p>
+            <p>Start Watching</p>
           </ButtonContainer>
         )}
       </NavButton>

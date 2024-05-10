@@ -1,8 +1,8 @@
 [package]
 name = "log_center"
-version = "0.0.0"
+version = "0.0.1"
 description = "A Tauri App"
-authors = ["you"]
+authors = ["julianfere"]
 license = ""
 repository = ""
 edition = "2021"
@@ -13,7 +13,12 @@ edition = "2021"
 tauri-build = { version = "1.4", features = [] }
 
 [dependencies]
-tauri = { version = "1.4", features = [ "window-all", "os-all", "dialog-all", "shell-open"] }
+tauri = { version = "1.4", features = [
+  "window-all",
+  "os-all",
+  "dialog-all",
+  "shell-open",
+] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 notify = "4.0.0"
